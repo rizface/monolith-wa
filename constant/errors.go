@@ -21,6 +21,14 @@ var (
 		Message: "PASSWORD_WRONG",
 		Code:    http.StatusUnauthorized,
 	}
+	INVALID_TOKEN = &ErrorBuilder{
+		Message: "INVALID_JWT",
+		Code:    http.StatusUnauthorized,
+	}
+	TOKEN_EXPIRED = &ErrorBuilder{
+		Message: "JWT_TOKEN_EXPIRED",
+		Code:    http.StatusUnauthorized,
+	}
 )
 
 func InternalServerError(msg string) *ErrorBuilder {

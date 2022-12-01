@@ -10,6 +10,7 @@ func main() {
 
 	rest.StartHealthCheckHandler(app)
 	rest.StartAuthHandler(app)
+	rest.StartMessageHandler(app)
 
 	app.Start()
 }
