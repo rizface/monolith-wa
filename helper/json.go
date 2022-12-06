@@ -23,6 +23,9 @@ func ErrMarshaller(code, msg interface{}, logger *zap.Logger) fiber.Map {
 		msg,
 		nil,
 	)
-	logger.Error(errId, zap.Any("errData", errMap))
+
+	if logger != nil {
+		logger.Error(errId, zap.Any("errData", errMap))
+	}
 	return errMap
 }

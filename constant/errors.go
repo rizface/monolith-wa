@@ -3,9 +3,9 @@ package constant
 import "net/http"
 
 type ErrorBuilder struct {
-	Message     string
-	Code        int
-	RealMessage string
+	Message     string `json:"message"`
+	Code        int    `json:"code"`
+	RealMessage string `json:"realMessage"`
 }
 
 var (

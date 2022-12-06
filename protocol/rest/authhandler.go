@@ -61,30 +61,23 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 			validationError,
 			h.app.Logger.Logger,
 		)
-		return c.Status(http.StatusBadRequest).JSON(errMap)
+		c.Locals("result", errMap)
+		return c.Next()
 	}
 
 	user, errCreateUser := h.authservice.Register(userdomain)
 	if errCreateUser != nil {
-		// Handle Error 500 more smooth e.g insert to jaeger
-
-		//===================
-
-		errMap := helper.ErrMarshaller(
-			errCreateUser.Code,
-			errCreateUser.Message,
-			h.app.Logger.Logger,
-		)
-		return c.Status(errCreateUser.Code).JSON(errMap)
+		c.Locals("result", errCreateUser)
+		return c.Next()
 	}
 
-	// RETURN
-	return c.Status(200).JSON(helper.Marshaller(
+	c.Locals("result", helper.Marshaller(
 		nil,
 		http.StatusOK,
 		"success",
 		user.ConvertToResponseDomain(),
 	))
+	return c.Next()
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
@@ -92,22 +85,21 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	err := json.NewDecoder(bytes.NewReader(c.Body())).Decode(userdomain)
 	if err != nil {
 		errBuilder := constant.InternalServerError(err.Error())
-		errMap := helper.ErrMarshaller(
-			errBuilder.Code,
-			errBuilder.Message,
-			h.app.Logger.Logger,
-		)
-		return c.Status(errBuilder.Code).JSON(errMap)
+		c.Locals("result", errBuilder)
+		return c.Next()
 	}
 
 	result, errBuilder := h.authservice.Login(userdomain)
 	if errBuilder != nil {
-		errMap := helper.ErrMarshaller(
-			errBuilder.Code,
-			errBuilder.Message,
-			h.app.Logger.Logger,
-		)
-		return c.Status(errBuilder.Code).JSON(errMap)
+		c.Locals("result", errBuilder)
+		return c.Next()
 	}
-	return c.JSON(result)
+
+	c.Locals("result", helper.Marshaller(
+		nil,
+		http.StatusOK,
+		"SUCCESS",
+		result,
+	))
+	return c.Next()
 }
