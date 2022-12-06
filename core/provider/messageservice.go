@@ -7,6 +7,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rizface/monolith-mini-whatsapp/constant"
 	"github.com/rizface/monolith-mini-whatsapp/core/port"
+	"github.com/rizface/monolith-mini-whatsapp/db/entity"
+	"github.com/rizface/monolith-mini-whatsapp/helper"
 	"github.com/rizface/monolith-mini-whatsapp/protocol/domain"
 )
 
@@ -51,4 +53,31 @@ func (m *MessageService) Create(message *domain.MessageRequestDomain) (fiber.Map
 	}
 
 	return nil, nil
+}
+
+func (m *MessageService) GetMessages(senderId string, receiverId string, userData *helper.Claim) (*[]entity.Message, *constant.ErrorBuilder) {
+	sender, err := m.userRepo.FindById(m.db, senderId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, constant.SENDER_NOT_FOUND
+		}
+		return nil, constant.InternalServerError(err.Error())
+	}
+
+	receiver, err := m.userRepo.FindById(m.db, receiverId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, constant.RECEIVER_NOT_FOUND
+		}
+		return nil, constant.InternalServerError(err.Error())
+	}
+	if sender.Id != userData.Id {
+		return nil, constant.UNAUTHORIZED
+	}
+
+	messages, err := m.messageRepo.GetMessages(m.db, sender.Id, receiver.Id)
+	if err != nil {
+		return nil, constant.InternalServerError(err.Error())
+	}
+	return messages, nil
 }

@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rizface/monolith-mini-whatsapp/app"
+	"github.com/rizface/monolith-mini-whatsapp/constant"
 	"github.com/rizface/monolith-mini-whatsapp/core/port"
 	"github.com/rizface/monolith-mini-whatsapp/core/provider"
 	"github.com/rizface/monolith-mini-whatsapp/db/repository"
 	"github.com/rizface/monolith-mini-whatsapp/helper"
 	"github.com/rizface/monolith-mini-whatsapp/protocol/domain"
 	"github.com/rizface/monolith-mini-whatsapp/protocol/rest/middleware"
+	"github.com/rizface/monolith-mini-whatsapp/protocol/rest/validator"
 	"go.uber.org/zap"
 )
 
@@ -38,6 +41,7 @@ func StartMessageHandler(app *app.App) {
 	app.Router.Route("/v1/messages", func(router fiber.Router) {
 		router.Use(authHandler.Auth)
 		router.Post("", handler.Create)
+		router.Get("/sender/:senderId/receiver/:receiverId", handler.GetMessages)
 	})
 }
 
@@ -78,5 +82,47 @@ func (m *MessageHandler) Create(c *fiber.Ctx) error {
 		result,
 	))
 
+	return c.Next()
+}
+
+func (h *MessageHandler) GetMessages(c *fiber.Ctx) error {
+	err := validator.ValidateUUID(c.Params("senderId"))
+	if err != nil {
+		c.Locals("result", helper.ErrMarshaller(
+			http.StatusBadRequest,
+			[]string{err.Error()},
+			nil,
+		))
+		return c.Next()
+	}
+
+	err = validator.ValidateUUID(c.Params("receiverId"))
+	if err != nil {
+		c.Locals("result", helper.ErrMarshaller(
+			http.StatusBadRequest,
+			[]string{err.Error()},
+			nil,
+		))
+		return c.Next()
+	}
+
+	senderId, receiverId := c.Params("senderId"), c.Params("receiverId")
+	userData := new(helper.Claim)
+	err = json.NewDecoder(strings.NewReader(c.Get("USER-DATA"))).Decode(userData)
+	if err != nil {
+		c.Locals("result", constant.InternalServerError(err.Error()))
+		return c.Next()
+	}
+	messages, errBuilder := h.Service.GetMessages(senderId, receiverId, userData)
+	if errBuilder != nil {
+		c.Locals("result", errBuilder)
+	} else {
+		c.Locals("result", helper.Marshaller(
+			nil,
+			http.StatusOK,
+			"SUCCESS",
+			messages,
+		))
+	}
 	return c.Next()
 }

@@ -29,6 +29,18 @@ var (
 		Message: "JWT_TOKEN_EXPIRED",
 		Code:    http.StatusUnauthorized,
 	}
+	SENDER_NOT_FOUND = &ErrorBuilder{
+		Message: "MESSAGE_SENDER_NOT_FOUND",
+		Code:    http.StatusNotFound,
+	}
+	RECEIVER_NOT_FOUND = &ErrorBuilder{
+		Message: "MESSAGE_RECEIVER_NOT_FOUND",
+		Code:    http.StatusNotFound,
+	}
+	UNAUTHORIZED = &ErrorBuilder{
+		Message: "UNAUTHORIZED",
+		Code:    http.StatusUnauthorized,
+	}
 )
 
 func InternalServerError(msg string) *ErrorBuilder {
