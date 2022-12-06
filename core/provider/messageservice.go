@@ -30,7 +30,7 @@ func InitMessageService(
 	}
 }
 
-func (m *MessageService) Create(message *domain.MessageRequestDomain) (fiber.Map, *constant.ErrorBuilder) {
+func (m *MessageService) Create(message *domain.MessageRequestDomain, userData *helper.Claim) (fiber.Map, *constant.ErrorBuilder) {
 	_, err := m.userRepo.FindById(m.db, message.SenderId)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -45,6 +45,10 @@ func (m *MessageService) Create(message *domain.MessageRequestDomain) (fiber.Map
 			return nil, constant.InternalServerError(err.Error())
 		}
 		return nil, constant.USER_NOT_FOUND
+	}
+
+	if message.SenderId != userData.Id {
+		return nil, constant.UNAUTHORIZED
 	}
 
 	err = m.messageRepo.Create(m.db, message)
