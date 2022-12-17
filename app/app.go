@@ -2,8 +2,8 @@ package app
 
 import (
 	"database/sql"
-	"log"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rizface/monolith-mini-whatsapp/db"
@@ -11,10 +11,11 @@ import (
 )
 
 type App struct {
-	Router   *fiber.App
-	Postgres *sql.DB
-	Redis    *redis.Client
-	Logger   *helper.Logger
+	Router        *fiber.App
+	Postgres      *sql.DB
+	Redis         *redis.Client
+	Logger        *helper.Logger
+	KafkaProducer *kafka.Producer
 }
 
 func Init() *App {
@@ -23,18 +24,22 @@ func Init() *App {
 	postgresConnection := db.InitPostgresql()
 	redisConnection := db.StartRedisConnection()
 	logger := helper.InitNewLogger()
+	kafkaProducer := NewProducer()
 
 	return &App{
-		Router:   router,
-		Postgres: postgresConnection,
-		Logger:   logger,
-		Redis:    redisConnection,
+		Router:        router,
+		Postgres:      postgresConnection,
+		Logger:        logger,
+		Redis:         redisConnection,
+		KafkaProducer: kafkaProducer,
 	}
 }
 
 func (app *App) Start() {
-	err := app.Router.Listen(":8000")
-	if err != nil {
-		log.Fatal(err)
-	}
+	end := make(chan bool)
+	go func() {
+		app.Router.Listen(":8000")
+	}()
+	go StartUserRegisterConsumer(app.Postgres)
+	<-end
 }

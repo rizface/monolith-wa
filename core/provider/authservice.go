@@ -2,6 +2,7 @@ package provider
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/go-redis/redis/v8"
@@ -15,10 +16,11 @@ import (
 )
 
 type AuthService struct {
-	userrepository  port.UserRepositoryInterface
-	redisrepository port.RedisRepositoryInterface
-	db              *sql.DB
-	redis           *redis.Client
+	userrepository   port.UserRepositoryInterface
+	redisrepository  port.RedisRepositoryInterface
+	db               *sql.DB
+	redis            *redis.Client
+	pubsubrepository port.PubSubPort
 }
 
 func InitAuthService(
@@ -26,12 +28,14 @@ func InitAuthService(
 	redisrepository port.RedisRepositoryInterface,
 	db *sql.DB,
 	redis *redis.Client,
+	pubsubrepository port.PubSubPort,
 ) *AuthService {
 	return &AuthService{
-		userrepository:  userrepository,
-		redisrepository: redisrepository,
-		db:              db,
-		redis:           redis,
+		userrepository:   userrepository,
+		redisrepository:  redisrepository,
+		db:               db,
+		redis:            redis,
+		pubsubrepository: pubsubrepository,
 	}
 }
 
@@ -51,6 +55,9 @@ func (u *AuthService) Register(userdomain *domain.UserRequestDomain) (*entity.Us
 		return nil, constant.InternalServerError(err.Error())
 	}
 	user, _ := u.userrepository.FindByUsername(u.db, userdomain.Username)
+
+	userBytes, _ := json.Marshal(user)
+	go u.pubsubrepository.Produce("user.register", userBytes)
 	return user, nil
 }
 

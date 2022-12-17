@@ -29,12 +29,14 @@ func initAuthHandler(app *app.App, authservice port.AuthServicePort) *AuthHandle
 
 func StartAuthHandler(app *app.App) {
 	userrepository := repository.InitUserRepository()
+	pubsubrepository := repository.NewPubSubRepositoru(app.KafkaProducer)
 	redisrepository := repository.InitRedisRepository()
 	service := provider.InitAuthService(
 		userrepository,
 		redisrepository,
 		app.Postgres,
 		app.Redis,
+		pubsubrepository,
 	)
 	handler := initAuthHandler(app, service)
 
