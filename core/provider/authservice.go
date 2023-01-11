@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -39,8 +40,11 @@ func InitAuthService(
 	}
 }
 
-func (u *AuthService) Register(userdomain *domain.UserRequestDomain) (*entity.User, *constant.ErrorBuilder) {
-	existingUser, err := u.userrepository.FindByUsername(u.db, userdomain.Username)
+func (u *AuthService) Register(ctx context.Context, userdomain *domain.UserRequestDomain) (*entity.User, *constant.ErrorBuilder) {
+	ctx, span := tracer.Start(ctx, "provider.authservice.Register")
+	defer span.End()
+
+	existingUser, err := u.userrepository.FindByUsername(ctx, u.db, userdomain.Username)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, constant.InternalServerError(err.Error())
 	}
@@ -50,19 +54,22 @@ func (u *AuthService) Register(userdomain *domain.UserRequestDomain) (*entity.Us
 
 	hashedPasswordBytes, _ := bcrypt.GenerateFromPassword([]byte(userdomain.Password), bcrypt.DefaultCost)
 	userdomain.Password = string(hashedPasswordBytes)
-	err = u.userrepository.Create(u.db, userdomain)
+	err = u.userrepository.Create(ctx, u.db, userdomain)
 	if err != nil {
 		return nil, constant.InternalServerError(err.Error())
 	}
-	user, _ := u.userrepository.FindByUsername(u.db, userdomain.Username)
+	user, _ := u.userrepository.FindByUsername(ctx, u.db, userdomain.Username)
 
 	userBytes, _ := json.Marshal(user)
 	go u.pubsubrepository.Produce("user.register", userBytes)
 	return user, nil
 }
 
-func (u *AuthService) Login(userdomain *domain.UserRequestDomain) (fiber.Map, *constant.ErrorBuilder) {
-	existing, err := u.userrepository.FindByUsername(u.db, userdomain.Username)
+func (u *AuthService) Login(ctx context.Context, userdomain *domain.UserRequestDomain) (fiber.Map, *constant.ErrorBuilder) {
+	ctx, span := tracer.Start(ctx, "authservice.Login")
+	defer span.End()
+
+	existing, err := u.userrepository.FindByUsername(ctx, u.db, userdomain.Username)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, constant.USER_NOT_FOUND
 	}

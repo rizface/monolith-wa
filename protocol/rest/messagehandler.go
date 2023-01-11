@@ -46,6 +46,9 @@ func StartMessageHandler(app *app.App) {
 }
 
 func (m *MessageHandler) Create(c *fiber.Ctx) error {
+	ctx, span := tracer.Start(c.UserContext(), "messagehandler.Create")
+	defer span.End()
+
 	message := new(domain.MessageRequestDomain)
 	err := json.NewDecoder(bytes.NewReader(c.Request().Body())).Decode(message)
 	if err != nil {
@@ -75,7 +78,7 @@ func (m *MessageHandler) Create(c *fiber.Ctx) error {
 		c.Locals("result", constant.InternalServerError(err.Error()))
 		return c.Next()
 	}
-	result, errBuilder := m.Service.Create(message, userData)
+	result, errBuilder := m.Service.Create(ctx, message, userData)
 	if errBuilder != nil {
 		c.Locals("result", errBuilder)
 		return c.Next()
@@ -92,6 +95,9 @@ func (m *MessageHandler) Create(c *fiber.Ctx) error {
 }
 
 func (h *MessageHandler) GetMessages(c *fiber.Ctx) error {
+	ctx, span := tracer.Start(c.UserContext(), "messagehandler.GetMessages")
+	defer span.End()
+
 	err := validator.ValidateUUID(c.Params("senderId"))
 	if err != nil {
 		c.Locals("result", helper.ErrMarshaller(
@@ -119,7 +125,7 @@ func (h *MessageHandler) GetMessages(c *fiber.Ctx) error {
 		c.Locals("result", constant.InternalServerError(err.Error()))
 		return c.Next()
 	}
-	messages, errBuilder := h.Service.GetMessages(senderId, receiverId, userData)
+	messages, errBuilder := h.Service.GetMessages(ctx, senderId, receiverId, userData)
 	if errBuilder != nil {
 		c.Locals("result", errBuilder)
 	} else {

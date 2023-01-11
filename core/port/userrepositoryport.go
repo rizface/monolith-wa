@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/rizface/monolith-mini-whatsapp/db/entity"
@@ -8,7 +9,7 @@ import (
 )
 
 type UserRepositoryInterface interface {
-	FindByUsername(db *sql.DB, username string) (*entity.User, error)
-	FindById(db *sql.DB, id string) (*entity.User, error)
-	Create(db *sql.DB, userdomain *domain.UserRequestDomain) error
+	FindByUsername(ctx context.Context, db *sql.DB, username string) (*entity.User, error)
+	FindById(ctx context.Context, db *sql.DB, id string) (*entity.User, error)
+	Create(ctx context.Context, db *sql.DB, userdomain *domain.UserRequestDomain) error
 }

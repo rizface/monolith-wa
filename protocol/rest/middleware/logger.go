@@ -1,12 +1,14 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/dchest/uniuri"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rizface/monolith-mini-whatsapp/app"
 	"github.com/rizface/monolith-mini-whatsapp/constant"
+	"go.opentelemetry.io/otel/codes"
 	"go.uber.org/zap"
 )
 
@@ -26,6 +28,9 @@ func UseLoggerHandler(app *app.App) {
 }
 
 func (h *LoggerHandler) Log(c *fiber.Ctx) error {
+	_, span := tracer.Start(c.UserContext(), "log handler")
+	defer span.End()
+
 	result := c.Locals("result")
 	errBuilder, ok := result.(*constant.ErrorBuilder)
 	if ok {
@@ -36,7 +41,8 @@ func (h *LoggerHandler) Log(c *fiber.Ctx) error {
 				zap.Any("errData", errBuilder),
 			)
 		}
-
+		span.RecordError(errors.New(errBuilder.Message))
+		span.SetStatus(codes.Code(errBuilder.Code), "")
 		return c.Status(errBuilder.Code).JSON(fiber.Map{
 			"code":    errBuilder.Code,
 			"message": errBuilder.Message,
@@ -55,6 +61,8 @@ func (h *LoggerHandler) Log(c *fiber.Ctx) error {
 			)
 			errMap["message"] = "INTERNAL_SERVER_ERROR"
 		}
+		span.RecordError(errors.New(errMap["message"].(string)))
+		span.SetStatus(codes.Code(errMap["code"].(int)), "")
 		return c.Status(code).JSON(errMap)
 	}
 	return c.JSON(result)

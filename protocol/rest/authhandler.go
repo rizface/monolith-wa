@@ -45,6 +45,9 @@ func StartAuthHandler(app *app.App) {
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
+	ctx, span := tracer.Start(c.UserContext(), "authhandler.Register")
+	defer span.End()
+
 	userdomain := new(domain.UserRequestDomain)
 	err := json.NewDecoder(bytes.NewReader(c.Body())).Decode(userdomain)
 	if err != nil {
@@ -67,7 +70,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		return c.Next()
 	}
 
-	user, errCreateUser := h.authservice.Register(userdomain)
+	user, errCreateUser := h.authservice.Register(ctx, userdomain)
 	if errCreateUser != nil {
 		c.Locals("result", errCreateUser)
 		return c.Next()
@@ -83,6 +86,10 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
+	ctx, span := tracer.Start(c.UserContext(), "authHandler.Login")
+	c.SetUserContext(ctx)
+	defer span.End()
+
 	userdomain := new(domain.UserRequestDomain)
 	err := json.NewDecoder(bytes.NewReader(c.Body())).Decode(userdomain)
 	if err != nil {
@@ -91,7 +98,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Next()
 	}
 
-	result, errBuilder := h.authservice.Login(userdomain)
+	result, errBuilder := h.authservice.Login(ctx, userdomain)
 	if errBuilder != nil {
 		c.Locals("result", errBuilder)
 		return c.Next()

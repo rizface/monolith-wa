@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/rizface/monolith-mini-whatsapp/db/entity"
@@ -8,6 +9,6 @@ import (
 )
 
 type MessageRepositoryPort interface {
-	Create(db *sql.DB, message *domain.MessageRequestDomain) error
-	GetMessages(db *sql.DB, senderId string, receiverId string) (*[]entity.Message, error)
+	Create(ctx context.Context, db *sql.DB, message *domain.MessageRequestDomain) error
+	GetMessages(ctx context.Context, db *sql.DB, senderId string, receiverId string) (*[]entity.Message, error)
 }

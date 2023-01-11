@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -30,8 +31,11 @@ func InitMessageService(
 	}
 }
 
-func (m *MessageService) Create(message *domain.MessageRequestDomain, userData *helper.Claim) (fiber.Map, *constant.ErrorBuilder) {
-	_, err := m.userRepo.FindById(m.db, message.SenderId)
+func (m *MessageService) Create(ctx context.Context, message *domain.MessageRequestDomain, userData *helper.Claim) (fiber.Map, *constant.ErrorBuilder) {
+	ctx, span := tracer.Start(ctx, "messageservice.Create")
+	defer span.End()
+
+	_, err := m.userRepo.FindById(ctx, m.db, message.SenderId)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, constant.InternalServerError(err.Error())
@@ -39,7 +43,7 @@ func (m *MessageService) Create(message *domain.MessageRequestDomain, userData *
 		return nil, constant.USER_NOT_FOUND
 	}
 
-	_, err = m.userRepo.FindById(m.db, message.ReceiverId)
+	_, err = m.userRepo.FindById(ctx, m.db, message.ReceiverId)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, constant.InternalServerError(err.Error())
@@ -51,7 +55,7 @@ func (m *MessageService) Create(message *domain.MessageRequestDomain, userData *
 		return nil, constant.UNAUTHORIZED
 	}
 
-	err = m.messageRepo.Create(m.db, message)
+	err = m.messageRepo.Create(ctx, m.db, message)
 	if err != nil {
 		return nil, constant.InternalServerError(err.Error())
 	}
@@ -59,8 +63,11 @@ func (m *MessageService) Create(message *domain.MessageRequestDomain, userData *
 	return nil, nil
 }
 
-func (m *MessageService) GetMessages(senderId string, receiverId string, userData *helper.Claim) (*[]entity.Message, *constant.ErrorBuilder) {
-	sender, err := m.userRepo.FindById(m.db, senderId)
+func (m *MessageService) GetMessages(ctx context.Context, senderId string, receiverId string, userData *helper.Claim) (*[]entity.Message, *constant.ErrorBuilder) {
+	ctx, span := tracer.Start(ctx, "messageservice.GetMessages")
+	defer span.End()
+
+	sender, err := m.userRepo.FindById(ctx, m.db, senderId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, constant.SENDER_NOT_FOUND
@@ -68,7 +75,7 @@ func (m *MessageService) GetMessages(senderId string, receiverId string, userDat
 		return nil, constant.InternalServerError(err.Error())
 	}
 
-	receiver, err := m.userRepo.FindById(m.db, receiverId)
+	receiver, err := m.userRepo.FindById(ctx, m.db, receiverId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, constant.RECEIVER_NOT_FOUND
@@ -79,7 +86,7 @@ func (m *MessageService) GetMessages(senderId string, receiverId string, userDat
 		return nil, constant.UNAUTHORIZED
 	}
 
-	messages, err := m.messageRepo.GetMessages(m.db, sender.Id, receiver.Id)
+	messages, err := m.messageRepo.GetMessages(ctx, m.db, sender.Id, receiver.Id)
 	if err != nil {
 		return nil, constant.InternalServerError(err.Error())
 	}
